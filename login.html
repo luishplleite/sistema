@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - TimePulse AI</title>
+    <meta name="description" content="Acesso ao sistema de gestão TimePulse AI.">
+
+    <link rel="icon" href="https://img.icons8.com/fluency/48/time-machine.png" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --primary-color: #28a745;
+            --primary-dark: #1e7e34;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --danger-color: #dc3545;
+            --border-radius: 8px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--dark-color), #212529);
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 420px;
+            overflow: hidden;
+            animation: fade-in 0.5s ease-out;
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 2rem 1.5rem;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .tagline {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .login-form {
+            padding: 2rem 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 1px solid #ccc;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: var(--primary-dark);
+        }
+        
+        .btn:disabled {
+            background-color: #e9ecef;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .loading-spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1.5rem;
+            text-align: center;
+            font-weight: 500;
+            display: none;
+        }
+
+        .alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="login-container" id="loginContainer">
+        <div class="login-header">
+            <h1 class="logo">TimePulse AI</h1>
+            <p class="tagline">Gestão Inteligente para seu Negócio</p>
+        </div>
+        <form class="login-form" id="loginForm">
+            <div class="alert" id="alertBox"></div>
+            <div class="form-group">
+                <label for="email" class="form-label">E-mail</label>
+                <input type="email" id="email" class="form-input" required autocomplete="email" placeholder="seu@email.com">
+            </div>
+            <div class="form-group">
+                <label for="password" class="form-label">Senha</label>
+                <input type="password" id="password" class="form-input" required autocomplete="current-password" placeholder="Sua senha">
+            </div>
+            <button type="submit" class="btn" id="loginButton">
+                <span id="loginButtonText">Entrar</span>
+                <div class="loading-spinner" id="loginSpinner" style="display: none;"></div>
+            </button>
+        </form>
+    </div>
+
+    <script>
+    let supabase;
+
+    /**
+     * Carrega as configurações seguras (URL e chave do Supabase) diretamente.
+     * Não depende mais de backend externo para evitar problemas de CORS.
+     * @returns {SupabaseClient|null} Uma instância do cliente Supabase ou nulo em caso de falha.
+     */
+    async function loadSecureConfig() {
+        try {
+            // ===== CONFIGURAÇÕES GLOBAIS E INICIALIZAÇÃO =====
+            const SUPABASE_URL = 'https://sguirxaunajirfvlzbac.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndWlyeGF1bmFqaXJmdmx6YmFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAwOTQ4MDIsImV4cCI6MjA2NTY3MDgwMn0.5vQj3LmBbpP0WosMwreboRww97wZyXBByQqG8oaI59k';
+            
+            // Verifica se as chaves do Supabase estão definidas.
+            if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+                console.log('✅ Configurações do Supabase carregadas com sucesso.');
+                // Cria e retorna o cliente Supabase.
+                return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            } else {
+                throw new Error('As configurações do Supabase não estão definidas corretamente.');
+            }
+        } catch (error) {
+            console.error('❌ Falha crítica ao carregar configurações do Supabase.', error);
+            const container = document.getElementById('loginContainer');
+            // Exibe uma mensagem de erro clara para o usuário final.
+            container.innerHTML = `<div class="alert error" style="display:block; margin: 1rem;">
+                <strong>Erro de Conexão</strong><br>
+                ${error.message} Verifique sua conexão e tente novamente.
+            </div>`;
+            return null;
+        }
+    }
+    
+    /**
+     * Exibe uma caixa de alerta na tela de login.
+     * @param {string} message - A mensagem a ser exibida.
+     * @param {string} type - O tipo de alerta ('error' ou 'success').
+     */
+    function showAlert(message, type = 'error') {
+        const alertBox = document.getElementById('alertBox');
+        alertBox.textContent = message;
+        alertBox.className = `alert ${type}`;
+        alertBox.style.display = 'block';
+    }
+
+    /**
+     * Controla o estado visual do botão de login (ativado, desativado, com spinner).
+     * @param {boolean} isLoading - True para mostrar o estado de carregamento, false para o estado normal.
+     */
+    function setLoginButtonState(isLoading) {
+        const button = document.getElementById('loginButton');
+        const text = document.getElementById('loginButtonText');
+        const spinner = document.getElementById('loginSpinner');
+        
+        button.disabled = isLoading;
+        text.style.display = isLoading ? 'none' : 'inline';
+        spinner.style.display = isLoading ? 'block' : 'none';
+    }
+
+    /**
+     * Função principal que lida com a submissão do formulário de login.
+     * @param {Event} event - O evento de submit do formulário.
+     */
+    async function handleLogin(event) {
+        event.preventDefault(); // Impede o recarregamento da página
+        setLoginButtonState(true);
+        showAlert('', 'error'); // Limpa alertas anteriores
+
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            // 1. Tenta autenticar o usuário com e-mail e senha no Supabase Auth.
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
+
+            if (authError) {
+                // Se houver erro na autenticação, exibe uma mensagem genérica e para a execução.
+                throw new Error('Credenciais inválidas. Verifique seu e-mail e senha.');
+            }
+
+            const user = authData.user;
+            if (!user) {
+                 throw new Error('Não foi possível obter os dados do usuário após o login.');
+            }
+            console.log('Usuário autenticado com ID:', user.id);
+
+            // 2. Verifica se o usuário autenticado é proprietário de um restaurante.
+            // A coluna 'owner_id' na tabela 'restaurants' deve ser uma FK para 'auth.users.id'.
+            const { data: restaurant, error: restaurantError } = await supabase
+                .from('restaurants')
+                .select('id') // Só precisamos saber se existe, então selecionamos apenas o 'id'.
+                .eq('owner_id', user.id) // Filtra pelo ID do usuário que acabou de logar.
+                .single(); // Esperamos encontrar no máximo um restaurante.
+
+            if (restaurantError || !restaurant) {
+                // MEDIDA DE SEGURANÇA: Se o usuário existe no Auth mas não tem restaurante,
+                // ele é deslogado imediatamente para não ficar com uma sessão "presa".
+                await supabase.auth.signOut();
+                throw new Error('Acesso negado. Este usuário não está vinculado a um restaurante ativo.');
+            }
+
+            console.log('Restaurante associado encontrado:', restaurant.id);
+            
+            // 3. Se tudo deu certo, salva o ID do restaurante no localStorage para uso em outras páginas.
+            localStorage.setItem('restaurant_id', restaurant.id);
+
+            // 4. Mostra uma mensagem de sucesso e redireciona o usuário para a página de gestão.
+            showAlert('Login bem-sucedido! Redirecionando...', 'success');
+            
+            setTimeout(() => {
+                // Redireciona para a página principal do sistema.
+                // Troque 'standaloneorder.html' pelo nome correto da sua página de dashboard/pedidos se for diferente.
+                window.location.href = 'gestao_pedidos.html'; 
+            }, 1500);
+
+        } catch (error) {
+            console.error('Falha no processo de login:', error.message);
+            showAlert(error.message, 'error'); // Mostra o erro específico na tela
+            setLoginButtonState(false); // Libera o botão para nova tentativa
+        }
+    }
+    
+    /**
+     * Função de inicialização que roda assim que o DOM da página é carregado.
+     */
+    document.addEventListener('DOMContentLoaded', async () => {
+        console.log('Página de login inicializada.');
+        
+        // Carrega as configurações e inicializa o cliente Supabase.
+        supabase = await loadSecureConfig();
+        
+        if (supabase) {
+            // Se o Supabase foi inicializado com sucesso, executa o resto da lógica.
+            
+            // Verifica se o usuário já tem uma sessão ativa no navegador.
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                console.log('Sessão ativa encontrada. Redirecionando automaticamente...');
+                window.location.href = 'gestao_pedidos.html'; // Redireciona direto se já estiver logado
+                return; // Para a execução para evitar adicionar o listener do formulário desnecessariamente.
+            }
+            
+            // Adiciona o listener para o evento de submit do formulário.
+            const loginForm = document.getElementById('loginForm');
+            loginForm.addEventListener('submit', handleLogin);
+            console.log('Formulário de login pronto para uso.');
+        } else {
+             // Se o Supabase não pôde ser inicializado, a função loadSecureConfig já exibiu o erro.
+             console.log('Inicialização da página interrompida por falha de configuração.');
+        }
+    });
+</script>
+
+</body>
+</html>
