@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cardápio - TimePulse AI</title>
+    <meta name="description" content="Gerencie seu cardápio, produtos e categorias">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        :root {
+            --primary-color: #28a745;
+            --primary-dark: #1e7e34;
+            --secondary-color: #6c757d;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
+            --light-color: #f8f9fa;
+            --dark-color: #343a40;
+            --border-radius: 8px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .dashboard-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 280px;
+            background: white;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            position: fixed;
+            height: 100vh;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+            transition: var(--transition);
+        }
+
+        .sidebar-header {
+            padding: 2rem 1.5rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .restaurant-name {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0;
+        }
+
+        .nav-section {
+            margin-bottom: 2rem;
+        }
+
+        .nav-section-title {
+            padding: 0 1.5rem;
+            color: #6c757d;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            color: #495057;
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background: rgba(40, 167, 69, 0.1);
+            color: var(--primary-color);
+        }
+
+        .nav-icon {
+            margin-right: 0.75rem;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 2rem;
+            transition: var(--transition);
+        }
+
+        .page-header {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            color: #6c757d;
+            font-size: 1rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-secondary {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .section-header h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .section-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        .main-tabs {
+            display: flex;
+            gap: 0.5rem;
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 2rem;
+        }
+
+        .tab-link {
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--secondary-color);
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-link.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 2rem;
+        }
+
+        .categories-container, .products-container {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .category-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .category-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .category-item:hover, .category-item.active {
+            background-color: var(--light-color);
+        }
+        
+        .category-item.active {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+        
+        .category-actions button {
+            background: none;
+            border: none;
+            color: var(--secondary-color);
+            cursor: pointer;
+            padding: 0.25rem;
+            font-size: 0.9rem;
+        }
+        
+        .category-actions button:hover {
+            color: var(--dark-color);
+        }
+        
+        .product-list-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .product-list-item:last-child {
+            border-bottom: none;
+        }
+
+        .product-list-item-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #ccc;
+            margin-right: 1rem;
+        }
+
+        .product-list-item-details {
+            flex-grow: 1;
+        }
+
+        .product-list-item-name {
+            font-weight: 600;
+        }
+
+        .product-list-item-description {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        .product-list-item-price {
+            font-weight: bold;
+            color: var(--primary-color);
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .product-list-item-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-left: 1rem;
+        }
+
+        .product-list-item-actions button {
+            background: none;
+            border: none;
+            color: var(--secondary-color);
+            cursor: pointer;
+            padding: 0.25rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: #6c757d;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 5vh 1rem;
+        }
+        
+        .modal.show {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background-color: #fefefe;
+            margin: 0 auto;
+            padding: 2rem;
+            border: none;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 12px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: .5rem;
+            font-weight: 500;
+        }
+
+        .form-control {
+            display: block;
+            width: 100%;
+            padding: .75rem;
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #495057;
+            background-color: #fff;
+            background-clip: padding-box;
+            border: 1px solid #ced4da;
+            border-radius: .25rem;
+            transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+        }
+        
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        #addOnCategoriesLink {
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid #ced4da;
+            padding: 1rem;
+            border-radius: .25rem;
+        }
+        
+        .checkbox-group, .radio-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        .checkbox-group label, .radio-group label {
+            margin-bottom: 0;
+            font-weight: normal;
+        }
+        .checkbox-group input, .radio-group input {
+            margin-top: 0;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="dashboard-layout">
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">TimePulse AI</div>
+                <div class="restaurant-name" id="restaurantName">Carregando...</div>
+            </div>
+            
+            <div class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Principal</div>
+                    <a href="dashboard.html" class="nav-link">
+                        <span class="nav-icon">📊</span>
+                        Dashboard
+                    </a>
+                    <a href="gestao_pedidos.html" class="nav-link">
+                        <span class="nav-icon">📦</span>
+                        Pedidos
+                    </a>
+                    <a href="cozinha.html" class="nav-link">
+                        <span class="nav-icon">👨‍🍳</span>
+                        Cozinha
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Gestão</div>
+                    <a href="cardapio.html" class="nav-link active">
+                        <span class="nav-icon">🍽️</span>
+                        Cardápio
+                    </a>
+                    <a href="gestao_entregadores.html" class="nav-link">
+                        <span class="nav-icon">🏍️</span>
+                        Entregadores
+                    </a>
+                    <a href="clientes.html" class="nav-link">
+                        <span class="nav-icon">👥</span>
+                        Clientes
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Relatórios</div>
+                    <a href="relatorios.html" class="nav-link">
+                        <span class="nav-icon">📈</span>
+                        Análises
+                    </a>
+                    <a href="historico_pedidos.html" class="nav-link">
+                        <span class="nav-icon">📋</span>
+                        Histórico
+                    </a>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Sistema</div>
+                    <a href="configuracoes.html" class="nav-link">
+                        <span class="nav-icon">⚙️</span>
+                        Configurações
+                    </a>
+                    <a href="ajuda.html" class="nav-link">
+                        <span class="nav-icon">❓</span>
+                        Ajuda
+                    </a>
+                    <a href="#" class="nav-link" onclick="signOut()">
+                        <span class="nav-icon">🚪</span>
+                        Sair
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">
+                    <i class="fas fa-book-open"></i>
+                    Gestão de Cardápio
+                </h1>
+                <p class="page-subtitle">Adicione, edite e organize seus produtos e categorias.</p>
+            </div>
+
+            <div class="main-tabs">
+                <button class="tab-link active" onclick="openTab(event, 'cardapioTab')">Cardápio</button>
+                <button class="tab-link" onclick="openTab(event, 'adicionaisTab')">Adicionais</button>
+            </div>
+
+            <div id="cardapioTab" class="tab-content active">
+                <div class="menu-grid">
+                    <div class="categories-container">
+                        <div class="section-header">
+                            <h3>Categorias</h3>
+                            <div class="section-actions">
+                                <button class="btn btn-primary btn-sm" onclick="openCategoryModal()">
+                                    <i class="fas fa-plus"></i> Nova
+                                </button>
+                            </div>
+                        </div>
+                        <ul id="categoryList" class="category-list">
+                            </ul>
+                    </div>
+                    <div class="products-container">
+                        <div class="section-header">
+                            <h3 id="productsTitle">Todos os Produtos</h3>
+                            <div class="section-actions">
+                                <button class="btn btn-success btn-sm" onclick="openProductModal()">
+                                    <i class="fas fa-plus"></i> Novo Produto
+                                </button>
+                            </div>
+                        </div>
+                        <div id="productsList">
+                            </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="adicionaisTab" class="tab-content">
+                 <div class="menu-grid">
+                    <div class="categories-container">
+                        <div class="section-header">
+                            <h3>Grupos de Adicionais</h3>
+                            <div class="section-actions">
+                                <button class="btn btn-primary btn-sm" onclick="openAddOnCategoryModal()">
+                                    <i class="fas fa-plus"></i> Novo Grupo
+                                </button>
+                            </div>
+                        </div>
+                        <ul id="addOnCategoryList" class="category-list">
+                            </ul>
+                    </div>
+                    <div class="products-container">
+                        <div class="section-header">
+                            <h3 id="addOnsTitle">Itens Adicionais</h3>
+                            <div class="section-actions">
+                                <button class="btn btn-success btn-sm" onclick="openAddOnModal()">
+                                    <i class="fas fa-plus"></i> Novo Item
+                                </button>
+                            </div>
+                        </div>
+                        <div id="addOnsList">
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="categoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="categoryModalTitle">Nova Categoria</h3>
+                <button class="modal-close" onclick="closeCategoryModal()">&times;</button>
+            </div>
+            <form id="categoryForm">
+                <input type="hidden" id="categoryId">
+                <div class="form-group">
+                    <label for="categoryName" class="form-label">Nome</label>
+                    <input type="text" id="categoryName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="categoryDescription" class="form-label">Descrição</label>
+                    <textarea id="categoryDescription" class="form-control" rows="3"></textarea>
+                </div>
+                 <div class="form-group">
+                    <label for="categoryOrder" class="form-label">Ordem de Exibição</label>
+                    <input type="number" id="categoryOrder" class="form-control" value="0">
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="categoryActive" checked>
+                        <label for="categoryActive">Ativa</label>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeCategoryModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+             <div class="modal-header">
+                <h3 id="productModalTitle">Novo Produto</h3>
+                <button class="modal-close" onclick="closeProductModal()">&times;</button>
+            </div>
+            <form id="productForm">
+                <input type="hidden" id="productId">
+                <div class="form-group">
+                    <label for="productName" class="form-label">Nome</label>
+                    <input type="text" id="productName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="productDescription" class="form-label">Descrição</label>
+                    <textarea id="productDescription" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="productCategory" class="form-label">Categoria</label>
+                    <select id="productCategory" class="form-control" required></select>
+                </div>
+                <div class="form-group">
+                    <label for="productPrice" class="form-label">Preço (R$)</label>
+                    <input type="number" id="productPrice" class="form-control" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="productOrder" class="form-label">Ordem de Exibição</label>
+                    <input type="number" id="productOrder" class="form-control" value="0">
+                </div>
+                 <div class="form-group">
+                    <label for="productPreparationTime" class="form-label">Tempo de Preparo (min)</label>
+                    <input type="number" id="productPreparationTime" class="form-control" value="0">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Grupos de Adicionais Vinculados</label>
+                    <div id="addOnCategoriesLink">
+                        </div>
+                </div>
+                <div class="form-group">
+                     <div class="checkbox-group">
+                        <input type="checkbox" id="productActive" checked>
+                        <label for="productActive">Ativo</label>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeProductModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="addOnCategoryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="addOnCategoryModalTitle">Novo Grupo de Adicionais</h3>
+                <button class="modal-close" onclick="closeAddOnCategoryModal()">&times;</button>
+            </div>
+            <form id="addOnCategoryForm">
+                <input type="hidden" id="addOnCategoryId">
+                <div class="form-group">
+                    <label for="addOnCategoryName" class="form-label">Nome do Grupo</label>
+                    <input type="text" id="addOnCategoryName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="addOnCategoryDescription" class="form-label">Descrição (Opcional)</label>
+                    <textarea id="addOnCategoryDescription" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tipo de Seleção</label>
+                    <div class="radio-group">
+                        <input type="radio" id="selectionTypeMultiple" name="selectionType" value="multiple" checked>
+                        <label for="selectionTypeMultiple">Múltipla (checkbox)</label>
+                    </div>
+                    <div class="radio-group">
+                        <input type="radio" id="selectionTypeSingle" name="selectionType" value="single">
+                        <label for="selectionTypeSingle">Única (radio button)</label>
+                    </div>
+                </div>
+                <div class="form-group" style="display: flex; gap: 1rem;">
+                    <div style="flex: 1;">
+                        <label for="minSelection" class="form-label">Seleção Mínima</label>
+                        <input type="number" id="minSelection" class="form-control" value="0" min="0">
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="maxSelection" class="form-label">Seleção Máxima</label>
+                        <input type="number" id="maxSelection" class="form-control" value="1" min="1">
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddOnCategoryModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="addOnModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="addOnModalTitle">Novo Item Adicional</h3>
+                <button class="modal-close" onclick="closeAddOnModal()">&times;</button>
+            </div>
+            <form id="addOnForm">
+                <input type="hidden" id="addOnId">
+                <div class="form-group">
+                    <label for="addOnName" class="form-label">Nome do Item</label>
+                    <input type="text" id="addOnName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="addOnPrice" class="form-label">Preço (R$)</label>
+                    <input type="number" id="addOnPrice" class="form-control" step="0.01" value="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="addOnCategory" class="form-label">Grupo de Adicional</label>
+                    <select id="addOnCategory" class="form-control" required></select>
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="addOnActive" checked>
+                        <label for="addOnActive">Ativo</label>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddOnModal()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script>
+        const SUPABASE_URL = 'https://sguirxaunajirfvlzbac.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNndWlyeGF1bmFqaXJmdmx6YmFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAwOTQ4MDIsImV4cCI6MjA2NTY3MDgwMn0.5vQj3LmBbpP0WosMwreboRww97wZyXBByQqG8oaI59k';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentRestaurant = null;
+        let categories = [];
+        let products = [];
+        let addOnCategories = [];
+        let addOns = [];
+        let selectedCategoryId = null;
+        let selectedAddOnCategoryId = null;
+
+        // --- INICIALIZAÇÃO ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadRestaurantInfo();
+            if (currentRestaurant) {
+                await loadAllData();
+                renderAll();
+                setupEventListeners();
+            }
+        });
+
+        async function loadAllData() {
+            await Promise.all([
+                loadCategories(),
+                loadProducts(),
+                loadAddOnCategories(),
+                loadAddOns()
+            ]);
+        }
+        
+        function renderAll() {
+            renderCategories();
+            renderProducts();
+            renderAddOnCategories();
+            renderAddOns();
+        }
+
+        async function loadRestaurantInfo() {
+            const restaurantId = localStorage.getItem('restaurant_id');
+            if (!restaurantId) {
+                window.location.href = 'login.html';
+                return;
+            }
+            const { data, error } = await supabase.from('restaurants').select('*').eq('id', restaurantId).single();
+            if (error) {
+                console.error('Erro ao carregar restaurante:', error);
+                return;
+            }
+            currentRestaurant = data;
+            document.getElementById('restaurantName').textContent = currentRestaurant.name;
+        }
+
+        // --- CARREGAMENTO DE DADOS ---
+        async function loadCategories() {
+            const { data, error } = await supabase
+                .from('product_categories')
+                .select('*')
+                .eq('restaurant_id', currentRestaurant.id)
+                .order('display_order', { ascending: true })
+                .order('name', { ascending: true });
+            if (error) console.error('Erro ao carregar categorias de produtos:', error);
+            else categories = data;
+        }
+
+        async function loadProducts() {
+            const { data, error } = await supabase
+                .from('products')
+                .select('*, product_add_on_categories_link(add_on_category_id)')
+                .eq('restaurant_id', currentRestaurant.id)
+                .order('display_order', { ascending: true })
+                .order('name', { ascending: true });
+            if (error) console.error('Erro ao carregar produtos:', error);
+            else products = data;
+        }
+        
+        async function loadAddOnCategories() {
+            const { data, error } = await supabase
+                .from('add_on_categories')
+                .select('*')
+                .eq('restaurant_id', currentRestaurant.id)
+                .order('name', { ascending: true });
+            if (error) console.error('Erro ao carregar categorias de adicionais:', error);
+            else addOnCategories = data;
+        }
+        
+        async function loadAddOns() {
+            const { data, error } = await supabase
+                .from('product_add_ons')
+                .select('*')
+                .eq('restaurant_id', currentRestaurant.id)
+                .order('name', { ascending: true });
+            if (error) console.error('Erro ao carregar adicionais:', error);
+            else addOns = data;
+        }
+
+        // --- RENDERIZAÇÃO ---
+        function renderCategories() {
+            const list = document.getElementById('categoryList');
+            list.innerHTML = `<li class="category-item ${selectedCategoryId === null ? 'active' : ''}" onclick="filterByCategory(null)"><span>Todos os Produtos</span></li>`;
+            categories.forEach(cat => {
+                const item = document.createElement('li');
+                item.className = `category-item ${selectedCategoryId === cat.id ? 'active' : ''}`;
+                item.onclick = () => filterByCategory(cat.id);
+                item.innerHTML = `
+                    <span>${cat.name}</span>
+                    <div class="category-actions">
+                        <button onclick="event.stopPropagation(); openCategoryModal('${cat.id}')"><i class="fas fa-edit"></i></button>
+                        <button onclick="event.stopPropagation(); deleteCategory('${cat.id}')"><i class="fas fa-trash"></i></button>
+                    </div>`;
+                list.appendChild(item);
+            });
+        }
+
+        function renderProducts() {
+            const container = document.getElementById('productsList');
+            container.innerHTML = '';
+            const filteredProducts = selectedCategoryId ? products.filter(p => p.category_id === selectedCategoryId) : products;
+            if (filteredProducts.length === 0) {
+                container.innerHTML = '<p class="empty-state">Nenhum produto encontrado.</p>';
+                return;
+            }
+            filteredProducts.forEach(prod => {
+                const item = document.createElement('div');
+                item.className = 'product-list-item';
+                item.innerHTML = `
+                    <div class="product-list-item-image"><i class="fas fa-image"></i></div>
+                    <div class="product-list-item-details">
+                        <div class="product-list-item-name">${prod.name}</div>
+                        <div class="product-list-item-description">${prod.description || ''}</div>
+                    </div>
+                    <div class="product-list-item-price">R$ ${parseFloat(prod.price).toFixed(2)}</div>
+                    <div class="product-list-item-actions">
+                        <button onclick="openProductModal('${prod.id}')"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteProduct('${prod.id}')"><i class="fas fa-trash"></i></button>
+                    </div>`;
+                container.appendChild(item);
+            });
+        }
+        
+        function renderAddOnCategories() {
+            const list = document.getElementById('addOnCategoryList');
+            list.innerHTML = `<li class="category-item ${selectedAddOnCategoryId === null ? 'active' : ''}" onclick="filterByAddOnCategory(null)"><span>Todos os Itens</span></li>`;
+            addOnCategories.forEach(cat => {
+                const item = document.createElement('li');
+                item.className = `category-item ${selectedAddOnCategoryId === cat.id ? 'active' : ''}`;
+                item.onclick = () => filterByAddOnCategory(cat.id);
+                item.innerHTML = `
+                    <span>${cat.name}</span>
+                    <div class="category-actions">
+                        <button onclick="event.stopPropagation(); openAddOnCategoryModal('${cat.id}')"><i class="fas fa-edit"></i></button>
+                        <button onclick="event.stopPropagation(); deleteAddOnCategory('${cat.id}')"><i class="fas fa-trash"></i></button>
+                    </div>`;
+                list.appendChild(item);
+            });
+        }
+
+        function renderAddOns() {
+            const container = document.getElementById('addOnsList');
+            container.innerHTML = '';
+            const filteredAddOns = selectedAddOnCategoryId ? addOns.filter(p => p.add_on_category_id === selectedAddOnCategoryId) : addOns;
+            if (filteredAddOns.length === 0) {
+                container.innerHTML = '<p class="empty-state">Nenhum item adicional encontrado.</p>';
+                return;
+            }
+            filteredAddOns.forEach(addOn => {
+                const item = document.createElement('div');
+                item.className = 'product-list-item';
+                item.innerHTML = `
+                    <div class="product-list-item-details">
+                        <div class="product-list-item-name">${addOn.name}</div>
+                    </div>
+                    <div class="product-list-item-price">R$ ${parseFloat(addOn.price).toFixed(2)}</div>
+                    <div class="product-list-item-actions">
+                        <button onclick="openAddOnModal('${addOn.id}')"><i class="fas fa-edit"></i></button>
+                        <button onclick="deleteAddOn('${addOn.id}')"><i class="fas fa-trash"></i></button>
+                    </div>`;
+                container.appendChild(item);
+            });
+        }
+
+        function filterByCategory(categoryId) {
+            selectedCategoryId = categoryId;
+            const category = categories.find(c => c.id === categoryId);
+            document.getElementById('productsTitle').textContent = category ? `Produtos em ${category.name}` : 'Todos os Produtos';
+            renderCategories();
+            renderProducts();
+        }
+
+        function filterByAddOnCategory(addOnCategoryId) {
+            selectedAddOnCategoryId = addOnCategoryId;
+            const category = addOnCategories.find(c => c.id === addOnCategoryId);
+            document.getElementById('addOnsTitle').textContent = category ? `Itens em ${category.name}` : 'Todos os Itens';
+            renderAddOnCategories();
+            renderAddOns();
+        }
+
+        // --- MODAIS E FORMULÁRIOS ---
+        function setupEventListeners() {
+            document.getElementById('categoryForm').addEventListener('submit', handleCategorySubmit);
+            document.getElementById('productForm').addEventListener('submit', handleProductSubmit);
+            document.getElementById('addOnCategoryForm').addEventListener('submit', handleAddOnCategorySubmit);
+            document.getElementById('addOnForm').addEventListener('submit', handleAddOnSubmit);
+        }
+
+        function openTab(evt, tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-link').forEach(link => link.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+            evt.currentTarget.classList.add('active');
+        }
+        
+        function openCategoryModal(id = null) {
+            const form = document.getElementById('categoryForm');
+            form.reset();
+            document.getElementById('categoryId').value = '';
+            
+            if(id) {
+                const category = categories.find(c => c.id === id);
+                document.getElementById('categoryModalTitle').textContent = 'Editar Categoria';
+                document.getElementById('categoryId').value = category.id;
+                document.getElementById('categoryName').value = category.name;
+                document.getElementById('categoryDescription').value = category.description;
+                document.getElementById('categoryOrder').value = category.display_order;
+                document.getElementById('categoryActive').checked = category.active;
+            } else {
+                document.getElementById('categoryModalTitle').textContent = 'Nova Categoria';
+            }
+            document.getElementById('categoryModal').classList.add('show');
+        }
+
+        function closeCategoryModal() {
+            document.getElementById('categoryModal').classList.remove('show');
+        }
+
+        async function handleCategorySubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('categoryId').value;
+            const categoryData = {
+                restaurant_id: currentRestaurant.id,
+                name: document.getElementById('categoryName').value,
+                description: document.getElementById('categoryDescription').value,
+                display_order: parseInt(document.getElementById('categoryOrder').value) || 0,
+                active: document.getElementById('categoryActive').checked,
+            };
+
+            let error;
+            if (id) {
+                ({ error } = await supabase.from('product_categories').update(categoryData).eq('id', id));
+            } else {
+                ({ error } = await supabase.from('product_categories').insert([categoryData]));
+            }
+
+            if (error) {
+                console.error('Erro ao salvar categoria:', error);
+                alert('Erro ao salvar categoria.');
+            } else {
+                closeCategoryModal();
+                await loadCategories();
+                renderCategories();
+            }
+        }
+        
+        async function deleteCategory(id) {
+            const productCount = products.filter(p => p.category_id === id).length;
+            if (productCount > 0) {
+                alert(`Não é possível excluir esta categoria pois ela contém ${productCount} produto(s). Mova ou exclua os produtos primeiro.`);
+                return;
+            }
+            if (!confirm('Tem certeza que deseja excluir esta categoria?')) return;
+            const { error } = await supabase.from('product_categories').delete().eq('id', id);
+            if (error) {
+                console.error('Erro ao excluir categoria:', error);
+                alert('Erro ao excluir categoria.');
+            } else {
+                await loadCategories();
+                renderCategories();
+            }
+        }
+
+        async function openProductModal(id = null) {
+            const form = document.getElementById('productForm');
+            form.reset();
+            document.getElementById('productId').value = '';
+            
+            const categorySelect = document.getElementById('productCategory');
+            categorySelect.innerHTML = '<option value="">Selecione...</option>';
+            categories.forEach(cat => {
+                categorySelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+            });
+
+            const addOnLinkContainer = document.getElementById('addOnCategoriesLink');
+            addOnLinkContainer.innerHTML = '';
+            addOnCategories.forEach(cat => {
+                addOnLinkContainer.innerHTML += `
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="addon-link-${cat.id}" value="${cat.id}" name="addOnLink">
+                        <label for="addon-link-${cat.id}">${cat.name}</label>
+                    </div>
+                `;
+            });
+
+            if(id) {
+                const product = products.find(p => p.id === id);
+                document.getElementById('productModalTitle').textContent = 'Editar Produto';
+                document.getElementById('productId').value = product.id;
+                document.getElementById('productName').value = product.name;
+                document.getElementById('productDescription').value = product.description;
+                document.getElementById('productCategory').value = product.category_id;
+                document.getElementById('productPrice').value = product.price;
+                document.getElementById('productOrder').value = product.display_order;
+                document.getElementById('productPreparationTime').value = product.preparation_time;
+                document.getElementById('productActive').checked = product.active;
+                
+                if (product.product_add_on_categories_link && product.product_add_on_categories_link.length > 0) {
+                    product.product_add_on_categories_link.forEach(link => {
+                        const checkbox = document.getElementById(`addon-link-${link.add_on_category_id}`);
+                        if (checkbox) checkbox.checked = true;
+                    });
+                }
+            } else {
+                document.getElementById('productModalTitle').textContent = 'Novo Produto';
+                if(selectedCategoryId) {
+                    categorySelect.value = selectedCategoryId;
+                }
+            }
+            document.getElementById('productModal').classList.add('show');
+        }
+
+        function closeProductModal() {
+            document.getElementById('productModal').classList.remove('show');
+        }
+
+        async function handleProductSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('productId').value;
+            
+            const productData = {
+                restaurant_id: currentRestaurant.id,
+                name: document.getElementById('productName').value,
+                description: document.getElementById('productDescription').value,
+                category_id: document.getElementById('productCategory').value,
+                price: parseFloat(document.getElementById('productPrice').value),
+                display_order: parseInt(document.getElementById('productOrder').value) || 0,
+                preparation_time: parseInt(document.getElementById('productPreparationTime').value) || 0,
+                active: document.getElementById('productActive').checked,
+            };
+
+            let savedProduct;
+            let productError;
+
+            if (id) {
+                const { data, error } = await supabase.from('products').update(productData).eq('id', id).select().single();
+                savedProduct = data;
+                productError = error;
+            } else {
+                const { data, error } = await supabase.from('products').insert([productData]).select().single();
+                savedProduct = data;
+                productError = error;
+            }
+
+            if (productError) {
+                console.error('Erro ao salvar produto:', productError);
+                alert('Erro ao salvar produto.');
+                return;
+            }
+            
+            const selectedAddOnLinks = Array.from(document.querySelectorAll('input[name="addOnLink"]:checked')).map(cb => cb.value);
+
+            const { error: deleteError } = await supabase.from('product_add_on_categories_link').delete().eq('product_id', savedProduct.id);
+            if (deleteError) console.error("Erro ao limpar links de adicionais:", deleteError);
+
+            if (selectedAddOnLinks.length > 0) {
+                const linksToInsert = selectedAddOnLinks.map(catId => ({ product_id: savedProduct.id, add_on_category_id: catId }));
+                const { error: insertError } = await supabase.from('product_add_on_categories_link').insert(linksToInsert);
+                if (insertError) console.error("Erro ao vincular adicionais:", insertError);
+            }
+            
+            closeProductModal();
+            await loadProducts();
+            renderProducts();
+        }
+        
+        async function deleteProduct(id) {
+            if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+            await supabase.from('product_add_on_categories_link').delete().eq('product_id', id);
+            const { error } = await supabase.from('products').delete().eq('id', id);
+            if (error) {
+                console.error('Erro ao excluir produto:', error);
+                 alert('Erro ao excluir produto.');
+            } else {
+                await loadProducts();
+                renderProducts();
+            }
+        }
+        
+        // --- Funções para Adicionais (CORRIGIDAS) ---
+        function openAddOnCategoryModal(id = null) {
+            const form = document.getElementById('addOnCategoryForm');
+            form.reset();
+            document.getElementById('addOnCategoryId').value = '';
+            // Define valores padrão para um novo grupo
+            document.getElementById('selectionTypeMultiple').checked = true;
+            document.getElementById('minSelection').value = 0;
+            document.getElementById('maxSelection').value = 1;
+
+            if(id) {
+                const category = addOnCategories.find(c => c.id === id);
+                if (category) {
+                    document.getElementById('addOnCategoryModalTitle').textContent = 'Editar Grupo de Adicionais';
+                    document.getElementById('addOnCategoryId').value = category.id;
+                    document.getElementById('addOnCategoryName').value = category.name;
+                    document.getElementById('addOnCategoryDescription').value = category.description || '';
+                    document.getElementById('minSelection').value = category.min_selection || 0;
+                    document.getElementById('maxSelection').value = category.max_selection || 1;
+
+                    if (category.selection_type === 'single') {
+                        document.getElementById('selectionTypeSingle').checked = true;
+                    } else {
+                        document.getElementById('selectionTypeMultiple').checked = true;
+                    }
+                }
+            } else {
+                document.getElementById('addOnCategoryModalTitle').textContent = 'Novo Grupo de Adicionais';
+            }
+            document.getElementById('addOnCategoryModal').classList.add('show');
+        }
+        
+        function closeAddOnCategoryModal() {
+            document.getElementById('addOnCategoryModal').classList.remove('show');
+        }
+
+        async function handleAddOnCategorySubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('addOnCategoryId').value;
+            
+            const minSelection = parseInt(document.getElementById('minSelection').value) || 0;
+            const maxSelection = parseInt(document.getElementById('maxSelection').value) || 1;
+
+            if (minSelection > maxSelection) {
+                alert("A seleção mínima não pode ser maior que a seleção máxima.");
+                return;
+            }
+
+            // Coleta os dados do formulário (sem a coluna 'active')
+            const data = {
+                restaurant_id: currentRestaurant.id,
+                name: document.getElementById('addOnCategoryName').value,
+                description: document.getElementById('addOnCategoryDescription').value,
+                selection_type: document.querySelector('input[name="selectionType"]:checked').value,
+                min_selection: minSelection,
+                max_selection: maxSelection,
+            };
+
+            let error;
+            if (id) {
+                ({ error } = await supabase.from('add_on_categories').update(data).eq('id', id));
+            } else {
+                ({ error } = await supabase.from('add_on_categories').insert([data]));
+            }
+
+            if (error) {
+                console.error('Erro ao salvar grupo de adicionais:', error);
+                alert('Ocorreu um erro ao salvar o grupo de adicionais. Verifique o console para mais detalhes.');
+            } else {
+                closeAddOnCategoryModal();
+                await loadAddOnCategories();
+                renderAddOnCategories();
+            }
+        }
+        
+        async function deleteAddOnCategory(id) {
+            const addOnCount = addOns.filter(a => a.add_on_category_id === id).length;
+            if (addOnCount > 0) {
+                alert(`Não é possível excluir este grupo, pois ele contém ${addOnCount} item(ns). Exclua os itens primeiro.`);
+                return;
+            }
+            if (!confirm('Tem certeza? Isso removerá o grupo permanentemente.')) return;
+            
+            await supabase.from('product_add_ons').delete().eq('add_on_category_id', id);
+            const { error } = await supabase.from('add_on_categories').delete().eq('id', id);
+            if (error) {
+                 console.error('Erro ao excluir grupo:', error);
+                 alert('Erro ao excluir grupo.');
+            } else {
+                await loadAllData();
+                renderAll();
+            }
+        }
+
+        function openAddOnModal(id = null) {
+            const form = document.getElementById('addOnForm');
+            form.reset();
+            document.getElementById('addOnId').value = '';
+            
+            const categorySelect = document.getElementById('addOnCategory');
+            categorySelect.innerHTML = '<option value="">Selecione...</option>';
+            addOnCategories.forEach(cat => {
+                categorySelect.innerHTML += `<option value="${cat.id}">${cat.name}</option>`;
+            });
+
+            if(id) {
+                const addOn = addOns.find(a => a.id === id);
+                document.getElementById('addOnModalTitle').textContent = 'Editar Item Adicional';
+                document.getElementById('addOnId').value = addOn.id;
+                document.getElementById('addOnName').value = addOn.name;
+                document.getElementById('addOnPrice').value = addOn.price;
+                document.getElementById('addOnCategory').value = addOn.add_on_category_id;
+                document.getElementById('addOnActive').checked = addOn.active;
+            } else {
+                document.getElementById('addOnModalTitle').textContent = 'Novo Item Adicional';
+                if(selectedAddOnCategoryId) {
+                    categorySelect.value = selectedAddOnCategoryId;
+                }
+            }
+            document.getElementById('addOnModal').classList.add('show');
+        }
+        
+        function closeAddOnModal() {
+            document.getElementById('addOnModal').classList.remove('show');
+        }
+
+        async function handleAddOnSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('addOnId').value;
+            const data = {
+                restaurant_id: currentRestaurant.id,
+                name: document.getElementById('addOnName').value,
+                price: parseFloat(document.getElementById('addOnPrice').value),
+                add_on_category_id: document.getElementById('addOnCategory').value,
+                active: document.getElementById('addOnActive').checked,
+            };
+            let error;
+            if (id) {
+                ({ error } = await supabase.from('product_add_ons').update(data).eq('id', id));
+            } else {
+                ({ error } = await supabase.from('product_add_ons').insert([data]));
+            }
+            if (error) {
+                console.error('Erro ao salvar item adicional:', error);
+                alert('Erro ao salvar item adicional.');
+            } else {
+                closeAddOnModal();
+                await loadAddOns();
+                renderAddOns();
+            }
+        }
+
+        async function deleteAddOn(id) {
+            if (!confirm('Tem certeza?')) return;
+            const { error } = await supabase.from('product_add_ons').delete().eq('id', id);
+            if (error) {
+                console.error('Erro ao excluir item adicional:', error);
+                alert('Erro ao excluir item adicional.');
+            } else {
+                await loadAddOns();
+                renderAddOns();
+            }
+        }
+        
+        function signOut() {
+            localStorage.removeItem('restaurant_id');
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>
